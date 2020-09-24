@@ -2778,7 +2778,7 @@ EXTERN_C const IID IID_ISOSDacInterface10;
     ISOSDacInterface10 : public IUnknown
     {
     public:
-        virtual HRESULT STDMETHODCALLTYPE GetObjectCCWList( 
+        virtual HRESULT STDMETHODCALLTYPE GetObjectMOWList( 
             CLRDATA_ADDRESS objAddr,
             unsigned int count,
             CLRDATA_ADDRESS ccwList[  ],
@@ -2805,7 +2805,7 @@ EXTERN_C const IID IID_ISOSDacInterface10;
         ULONG ( STDMETHODCALLTYPE *Release )( 
             ISOSDacInterface10 * This);
         
-        HRESULT ( STDMETHODCALLTYPE *GetObjectCCWList )( 
+        HRESULT ( STDMETHODCALLTYPE *GetObjectMOWList )( 
             ISOSDacInterface10 * This,
             CLRDATA_ADDRESS objAddr,
             unsigned int count,
@@ -2835,8 +2835,8 @@ EXTERN_C const IID IID_ISOSDacInterface10;
     ( (This)->lpVtbl -> Release(This) ) 
 
 
-#define ISOSDacInterface10_GetObjectCCWList(This,objAddr,count,ccwList,pNeeded) \
-    ( (This)->lpVtbl -> GetObjectCCWList(This,objAddr,count,ccwList,pNeeded) ) 
+#define ISOSDacInterface10_GetObjectMOWList(This,objAddr,count,ccwList,pNeeded) \
+    ( (This)->lpVtbl -> GetObjectMOWList(This,objAddr,count,ccwList,pNeeded) ) 
 
 #endif /* COBJMACROS */
 

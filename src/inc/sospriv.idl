@@ -432,5 +432,5 @@ interface ISOSDacInterface9 : IUnknown
 ]
 interface ISOSDacInterface10 : IUnknown
 {
-    HRESULT GetObjectCCWList(CLRDATA_ADDRESS objAddr, unsigned int count, CLRDATA_ADDRESS ccwList[], unsigned int *pNeeded);
+    HRESULT GetObjectMOWList(CLRDATA_ADDRESS objAddr, unsigned int count, CLRDATA_ADDRESS ccwList[], unsigned int *pNeeded);
 }

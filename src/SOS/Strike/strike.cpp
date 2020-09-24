@@ -1543,18 +1543,17 @@ HRESULT PrintObj(TADDR taObj, BOOL bPrintFields = TRUE)
     {
         CLRDATA_ADDRESS objAddr = TO_CDADDR(taObj);
         unsigned int needed;
-        // HRESULT GetObjectCCWList(CLRDATA_ADDRESS objAddr, unsigned int count, CLRDATA_ADDRESS ccwList[], unsigned int *pNeeded);
-        if (SUCCEEDED(sos10->GetObjectCCWList(objAddr, 0, NULL, &needed)) && needed > 0)
+       if (SUCCEEDED(sos10->GetObjectMOWList(objAddr, 0, NULL, &needed)) && needed > 0)
         {
             ArrayHolder<CLRDATA_ADDRESS> pArray = new NOTHROW CLRDATA_ADDRESS[needed];
             if (pArray != NULL)
             {
-                if (SUCCEEDED(sos10->GetObjectCCWList(objAddr, needed, pArray, NULL)))
+                if (SUCCEEDED(sos10->GetObjectMOWList(objAddr, needed, pArray, NULL)))
                 {
-                    ExtOut("ComWrappers CCWs:\n");
+                    ExtOut("ManagedObjectWrappers:\n");
                     for (unsigned int i = 0; i < needed; ++i)
                     {
-                        DMLOut("             %s\n", DMLCCWrapper(pArray[i]));
+                        ExtOut("             %p\n", pArray[i]);
                     }
                 }
                 // TODO: should there be an error message when we fail on the second call?
@@ -3240,10 +3239,12 @@ DECLARE_API(DumpCCW)
     ONLY_SUPPORTED_ON_WINDOWS_TARGET();
 
     BOOL dml = FALSE;
+    BOOL comWrappers = FALSE;
     StringHolder strObject;
 
     CMDOption option[] =
     {   // name, vptr, type, hasValue
+        { "-cw", &comWrappers, COBOOL, FALSE },      // Treat the pointer as the new ComWrappers style CCW instead of the old ComCallWrapper style
         {"/d", &dml, COBOOL, FALSE}
     };
     CMDValue arg[] =
@@ -3262,12 +3263,18 @@ DECLARE_API(DumpCCW)
         ExtOut("Missing CCW address\n");
         return Status;
     }
+    
+
+    DWORD_PTR p_CCW = GetExpression(strObject.data);
+    if (p_CCW == 0)
+    {
+        ExtOut("Invalid CCW %s\n", args);
+    }
     else
     {
-        DWORD_PTR p_CCW = GetExpression(strObject.data);
-        if (p_CCW == 0)
+        if (comWrappers)
         {
-            ExtOut("Invalid CCW %s\n", args);
+
         }
         else
         {
