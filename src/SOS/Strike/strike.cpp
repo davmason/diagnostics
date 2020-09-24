@@ -1537,6 +1537,36 @@ HRESULT PrintObj(TADDR taObj, BOOL bPrintFields = TRUE)
         DMLOut("CCW:         %s\n", DMLCCWrapper(objData.CCW));
     }
 
+    // Check for ComWrappers CCWs
+    ReleaseHolder<ISOSDacInterface10> sos10;
+    if (SUCCEEDED(Status = g_sos->QueryInterface(__uuidof(ISOSDacInterface10), &sos10)))
+    {
+        CLRDATA_ADDRESS objAddr = TO_CDADDR(taObj);
+        unsigned int needed;
+        // HRESULT GetObjectCCWList(CLRDATA_ADDRESS objAddr, unsigned int count, CLRDATA_ADDRESS ccwList[], unsigned int *pNeeded);
+        if (SUCCEEDED(sos10->GetObjectCCWList(objAddr, 0, NULL, &needed)) && needed > 0)
+        {
+            ArrayHolder<CLRDATA_ADDRESS> pArray = new NOTHROW CLRDATA_ADDRESS[needed];
+            if (pArray != NULL)
+            {
+                if (SUCCEEDED(sos10->GetObjectCCWList(objAddr, needed, pArray, NULL)))
+                {
+                    ExtOut("ComWrappers CCWs:\n");
+                    for (unsigned int i = 0; i < needed; ++i)
+                    {
+                        DMLOut("             %s\n", DMLCCWrapper(pArray[i]));
+                    }
+                }
+                // TODO: should there be an error message when we fail on the second call?
+            }
+            else
+            {
+                ReportOOM();
+            }
+
+        }
+    }
+
     DWORD_PTR size = (DWORD_PTR)objData.Size;
     ExtOut("Size:        %" POINTERSIZE_TYPE "d(0x%" POINTERSIZE_TYPE "x) bytes\n", size, size);
 
