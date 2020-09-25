@@ -1542,13 +1542,14 @@ HRESULT PrintObj(TADDR taObj, BOOL bPrintFields = TRUE)
     if (SUCCEEDED(Status = g_sos->QueryInterface(__uuidof(ISOSDacInterface10), &sos10)))
     {
         CLRDATA_ADDRESS objAddr = TO_CDADDR(taObj);
+        CLRDATA_ADDRESS rcwNative;
         unsigned int needed;
-       if (SUCCEEDED(sos10->GetObjectComWrappersData(objAddr, NULL, 0, NULL, &needed)) && needed > 0)
+       if (SUCCEEDED(sos10->GetObjectComWrappersData(objAddr, &rcwNative, 0, NULL, &needed)) 
+            && (needed > 0 || rcwNative != 0))
         {
             ArrayHolder<CLRDATA_ADDRESS> pArray = new NOTHROW CLRDATA_ADDRESS[needed];
             if (pArray != NULL)
             {
-                CLRDATA_ADDRESS rcwNative;
                 if (SUCCEEDED(sos10->GetObjectComWrappersData(objAddr, &rcwNative, needed, pArray, NULL)))
                 {
                     if (rcwNative != 0)
@@ -3148,7 +3149,7 @@ DECLARE_API(DumpRCW)
     CMDOption option[] =
     {   // name, vptr, type, hasValue
         {"/d", &dml, COBOOL, FALSE},
-        {"-mt", &comWrapperStyle, COBOOL, FALSE}
+        {"-cw", &comWrapperStyle, COBOOL, FALSE}
     };
     CMDValue arg[] =
     {   // vptr, type
