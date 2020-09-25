@@ -1543,17 +1543,27 @@ HRESULT PrintObj(TADDR taObj, BOOL bPrintFields = TRUE)
     {
         CLRDATA_ADDRESS objAddr = TO_CDADDR(taObj);
         unsigned int needed;
-       if (SUCCEEDED(sos10->GetObjectMOWList(objAddr, 0, NULL, &needed)) && needed > 0)
+       if (SUCCEEDED(sos10->GetObjectComWrappersData(objAddr, NULL, 0, NULL, &needed)) && needed > 0)
         {
             ArrayHolder<CLRDATA_ADDRESS> pArray = new NOTHROW CLRDATA_ADDRESS[needed];
             if (pArray != NULL)
             {
-                if (SUCCEEDED(sos10->GetObjectMOWList(objAddr, needed, pArray, NULL)))
+                CLRDATA_ADDRESS rcwNative;
+                if (SUCCEEDED(sos10->GetObjectComWrappersData(objAddr, &rcwNative, needed, pArray, NULL)))
                 {
-                    ExtOut("ManagedObjectWrappers:\n");
+                    if (rcwNative != 0)
+                    {
+                        DMLOut("ComWrappers RCW: %s\n", DMLComWrapperRCW(rcwNative));
+                    }
+
+                    if (needed > 0)
+                    {
+                        ExtOut("ManagedObjectWrappers:\n");
+                    }
+
                     for (unsigned int i = 0; i < needed; ++i)
                     {
-                        ExtOut("             %p\n", pArray[i]);
+                        DMLOut("             %s\n", DMLComWrapperCCW(pArray[i]));
                     }
                 }
                 // TODO: should there be an error message when we fail on the second call?
@@ -3132,11 +3142,13 @@ DECLARE_API(DumpRCW)
     ONLY_SUPPORTED_ON_WINDOWS_TARGET();
 
     BOOL dml = FALSE;
+    BOOL comWrapperStyle = FALSE;
     StringHolder strObject;
 
     CMDOption option[] =
     {   // name, vptr, type, hasValue
-        {"/d", &dml, COBOOL, FALSE}
+        {"/d", &dml, COBOOL, FALSE},
+        {"-mt", &comWrapperStyle, COBOOL, FALSE}
     };
     CMDValue arg[] =
     {   // vptr, type
@@ -3163,69 +3175,88 @@ DECLARE_API(DumpRCW)
         }
         else
         {
-            DacpRCWData rcwData;
-            if ((Status = rcwData.Request(g_sos, p_RCW)) != S_OK)
+            if (comWrapperStyle)
             {
-                ExtOut("Error requesting RCW data\n");
-                return Status;
+                CLRDATA_ADDRESS identityPtr;
+                ReleaseHolder<ISOSDacInterface10> sos10;
+                if (SUCCEEDED(Status = g_sos->QueryInterface(__uuidof(ISOSDacInterface10), &sos10))
+                    && SUCCEEDED(sos10->GetIdentityForEOC(p_RCW, &identityPtr))
+                    && identityPtr != 0)
+                {
+                    ExtOut("    ExternalObjectContext = %p\n", p_RCW);
+                    ExtOut("    Identity              = %p\n", identityPtr);
+                }
+                else
+                {
+                    ExtOut("Error requestiong ComWrappers style RCW data\n");
+                }
             }
-            BOOL isDCOMProxy;
-            if (FAILED(rcwData.IsDCOMProxy(g_sos, p_RCW, &isDCOMProxy)))
+            else
             {
-                isDCOMProxy = FALSE;
-            }
+                DacpRCWData rcwData;
+                if ((Status = rcwData.Request(g_sos, p_RCW)) != S_OK)
+                {
+                    ExtOut("Error requesting RCW data\n");
+                    return Status;
+                }
+                BOOL isDCOMProxy;
+                if (FAILED(rcwData.IsDCOMProxy(g_sos, p_RCW, &isDCOMProxy)))
+                {
+                    isDCOMProxy = FALSE;
+                }
 
-            DMLOut("Managed object:             %s\n", DMLObject(rcwData.managedObject));
-            DMLOut("Creating thread:            %p\n", SOS_PTR(rcwData.creatorThread));
-            ExtOut("IUnknown pointer:           %p\n", SOS_PTR(rcwData.unknownPointer));
-            ExtOut("COM Context:                %p\n", SOS_PTR(rcwData.ctxCookie));
-            ExtOut("Managed ref count:          %d\n", rcwData.refCount);
-            ExtOut("IUnknown V-table pointer :  %p (captured at RCW creation time)\n", SOS_PTR(rcwData.vtablePtr));
+                DMLOut("Managed object:             %s\n", DMLObject(rcwData.managedObject));
+                DMLOut("Creating thread:            %p\n", SOS_PTR(rcwData.creatorThread));
+                ExtOut("IUnknown pointer:           %p\n", SOS_PTR(rcwData.unknownPointer));
+                ExtOut("COM Context:                %p\n", SOS_PTR(rcwData.ctxCookie));
+                ExtOut("Managed ref count:          %d\n", rcwData.refCount);
+                ExtOut("IUnknown V-table pointer :  %p (captured at RCW creation time)\n", SOS_PTR(rcwData.vtablePtr));
 
-            ExtOut("Flags:                      %s%s%s%s%s%s%s%s\n",
-                (rcwData.isDisconnected? "IsDisconnected " : ""),
-                (rcwData.supportsIInspectable? "SupportsIInspectable " : ""),
-                (rcwData.isAggregated? "IsAggregated " : ""),
-                (rcwData.isContained? "IsContained " : ""),
-                (rcwData.isJupiterObject? "IsJupiterObject " : ""),
-                (rcwData.isFreeThreaded? "IsFreeThreaded " : ""),
-                (rcwData.identityPointer == TO_CDADDR(p_RCW)? "IsUnique " : ""),
-                (isDCOMProxy ? "IsDCOMProxy " : "")
-                );
+                ExtOut("Flags:                      %s%s%s%s%s%s%s%s\n",
+                    (rcwData.isDisconnected? "IsDisconnected " : ""),
+                    (rcwData.supportsIInspectable? "SupportsIInspectable " : ""),
+                    (rcwData.isAggregated? "IsAggregated " : ""),
+                    (rcwData.isContained? "IsContained " : ""),
+                    (rcwData.isJupiterObject? "IsJupiterObject " : ""),
+                    (rcwData.isFreeThreaded? "IsFreeThreaded " : ""),
+                    (rcwData.identityPointer == TO_CDADDR(p_RCW)? "IsUnique " : ""),
+                    (isDCOMProxy ? "IsDCOMProxy " : "")
+                    );
 
-            // Jupiter data hidden by default
-            if (rcwData.isJupiterObject)
-            {
-                ExtOut("IJupiterObject:    %p\n", SOS_PTR(rcwData.jupiterObject));
-            }
+                // Jupiter data hidden by default
+                if (rcwData.isJupiterObject)
+                {
+                    ExtOut("IJupiterObject:    %p\n", SOS_PTR(rcwData.jupiterObject));
+                }
 
-            ExtOut("COM interface pointers:\n");
+                ExtOut("COM interface pointers:\n");
 
-            ArrayHolder<DacpCOMInterfacePointerData> pArray = new NOTHROW DacpCOMInterfacePointerData[rcwData.interfaceCount];
-            if (pArray == NULL)
-            {
-                ReportOOM();
-                return Status;
-            }
+                ArrayHolder<DacpCOMInterfacePointerData> pArray = new NOTHROW DacpCOMInterfacePointerData[rcwData.interfaceCount];
+                if (pArray == NULL)
+                {
+                    ReportOOM();
+                    return Status;
+                }
 
-            if ((Status = g_sos->GetRCWInterfaces(p_RCW, rcwData.interfaceCount, pArray, NULL)) != S_OK)
-            {
-                ExtOut("Error requesting COM interface pointers\n");
-                return Status;
-            }
+                if ((Status = g_sos->GetRCWInterfaces(p_RCW, rcwData.interfaceCount, pArray, NULL)) != S_OK)
+                {
+                    ExtOut("Error requesting COM interface pointers\n");
+                    return Status;
+                }
 
-            ExtOut("%" POINTERSIZE "s %" POINTERSIZE "s %" POINTERSIZE "s Type\n", "IP", "Context", "MT");
-            for (int i = 0; i < rcwData.interfaceCount; i++)
-            {
-                // Ignore any NULL MethodTable interface cache. At this point only IJupiterObject
-                // is saved as NULL MethodTable at first slot, and we've already printed outs its
-                // value earlier.
-                if (pArray[i].methodTable == NULL)
-                    continue;
+                ExtOut("%" POINTERSIZE "s %" POINTERSIZE "s %" POINTERSIZE "s Type\n", "IP", "Context", "MT");
+                for (int i = 0; i < rcwData.interfaceCount; i++)
+                {
+                    // Ignore any NULL MethodTable interface cache. At this point only IJupiterObject
+                    // is saved as NULL MethodTable at first slot, and we've already printed outs its
+                    // value earlier.
+                    if (pArray[i].methodTable == NULL)
+                        continue;
 
-                NameForMT_s(TO_TADDR(pArray[i].methodTable), g_mdName, mdNameLen);
+                    NameForMT_s(TO_TADDR(pArray[i].methodTable), g_mdName, mdNameLen);
 
-                DMLOut("%p %p %s %S\n", SOS_PTR(pArray[i].interfacePtr), SOS_PTR(pArray[i].comContext), DMLMethodTable(pArray[i].methodTable), g_mdName);
+                    DMLOut("%p %p %s %S\n", SOS_PTR(pArray[i].interfacePtr), SOS_PTR(pArray[i].comContext), DMLMethodTable(pArray[i].methodTable), g_mdName);
+                }
             }
         }
     }
@@ -3239,13 +3270,13 @@ DECLARE_API(DumpCCW)
     ONLY_SUPPORTED_ON_WINDOWS_TARGET();
 
     BOOL dml = FALSE;
-    BOOL comWrappers = FALSE;
+    BOOL comWrapperStyle = FALSE;
     StringHolder strObject;
 
     CMDOption option[] =
     {   // name, vptr, type, hasValue
-        { "-cw", &comWrappers, COBOOL, FALSE },      // Treat the pointer as the new ComWrappers style CCW instead of the old ComCallWrapper style
-        {"/d", &dml, COBOOL, FALSE}
+        {"/d", &dml, COBOOL, FALSE},
+        {"-cw", &comWrapperStyle, COBOOL, FALSE}
     };
     CMDValue arg[] =
     {   // vptr, type
@@ -3272,9 +3303,21 @@ DECLARE_API(DumpCCW)
     }
     else
     {
-        if (comWrappers)
+        if (comWrapperStyle)
         {
-
+            CLRDATA_ADDRESS managedObject;
+            ReleaseHolder<ISOSDacInterface10> sos10;
+            if (SUCCEEDED(Status = g_sos->QueryInterface(__uuidof(ISOSDacInterface10), &sos10))
+                && SUCCEEDED(sos10->GetManagedObjectForMOW(p_CCW, &managedObject))
+                && managedObject != 0)
+            {
+                ExtOut("    ManagedObjectWrapper* = %p\n", (p_CCW & ~15));
+                ExtOut("    ManagedObject         = %p\n", managedObject);
+            }
+            else
+            {
+                ExtOut("Error requestiong ComWrappers style CCW data\n");
+            }
         }
         else
         {

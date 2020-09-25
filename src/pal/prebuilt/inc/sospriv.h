@@ -1303,7 +1303,7 @@ EXTERN_C const IID IID_ISOSDacInterface;
             ISOSDacInterface * This,
             CLRDATA_ADDRESS ip,
             unsigned int count,
-            char *name,
+            unsigned char *name,
             unsigned int *pNeeded);
         
         HRESULT ( STDMETHODCALLTYPE *GetJumpThunkTarget )( 
@@ -2778,11 +2778,20 @@ EXTERN_C const IID IID_ISOSDacInterface10;
     ISOSDacInterface10 : public IUnknown
     {
     public:
-        virtual HRESULT STDMETHODCALLTYPE GetObjectMOWList( 
+        virtual HRESULT STDMETHODCALLTYPE GetObjectComWrappersData( 
             CLRDATA_ADDRESS objAddr,
+            CLRDATA_ADDRESS *rcwNative,
             unsigned int count,
-            CLRDATA_ADDRESS ccwList[  ],
+            CLRDATA_ADDRESS *mowList,
             unsigned int *pNeeded) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetManagedObjectForMOW( 
+            CLRDATA_ADDRESS mowAddr,
+            CLRDATA_ADDRESS *managedObject) = 0;
+        
+        virtual HRESULT STDMETHODCALLTYPE GetIdentityForEOC( 
+            CLRDATA_ADDRESS context,
+            CLRDATA_ADDRESS *identity) = 0;
         
     };
     
@@ -2805,12 +2814,23 @@ EXTERN_C const IID IID_ISOSDacInterface10;
         ULONG ( STDMETHODCALLTYPE *Release )( 
             ISOSDacInterface10 * This);
         
-        HRESULT ( STDMETHODCALLTYPE *GetObjectMOWList )( 
+        HRESULT ( STDMETHODCALLTYPE *GetObjectComWrappersData )( 
             ISOSDacInterface10 * This,
             CLRDATA_ADDRESS objAddr,
+            CLRDATA_ADDRESS *rcwNative,
             unsigned int count,
-            CLRDATA_ADDRESS ccwList[  ],
+            CLRDATA_ADDRESS *mowList,
             unsigned int *pNeeded);
+        
+        HRESULT ( STDMETHODCALLTYPE *GetManagedObjectForMOW )( 
+            ISOSDacInterface10 * This,
+            CLRDATA_ADDRESS mowAddr,
+            CLRDATA_ADDRESS *managedObject);
+        
+        HRESULT ( STDMETHODCALLTYPE *GetIdentityForEOC )( 
+            ISOSDacInterface10 * This,
+            CLRDATA_ADDRESS context,
+            CLRDATA_ADDRESS *identity);
         
         END_INTERFACE
     } ISOSDacInterface10Vtbl;
@@ -2835,8 +2855,14 @@ EXTERN_C const IID IID_ISOSDacInterface10;
     ( (This)->lpVtbl -> Release(This) ) 
 
 
-#define ISOSDacInterface10_GetObjectMOWList(This,objAddr,count,ccwList,pNeeded) \
-    ( (This)->lpVtbl -> GetObjectMOWList(This,objAddr,count,ccwList,pNeeded) ) 
+#define ISOSDacInterface10_GetObjectComWrappersData(This,objAddr,rcwNative,count,mowList,pNeeded)   \
+    ( (This)->lpVtbl -> GetObjectComWrappersData(This,objAddr,rcwNative,count,mowList,pNeeded) ) 
+
+#define ISOSDacInterface10_GetManagedObjectForMOW(This,mowAddr,managedObject)   \
+    ( (This)->lpVtbl -> GetManagedObjectForMOW(This,mowAddr,managedObject) ) 
+
+#define GetIdentityForEOC(This,context,identity)   \
+    ( (This)->lpVtbl -> GetIdentityForEOC(This,context,identity) ) 
 
 #endif /* COBJMACROS */
 
