@@ -34,8 +34,8 @@ namespace Microsoft.Diagnostics.Tools.Trace
             return Task.FromResult(-1);
         }
 
-        delegate Task<int> TopNReportDelegate(CancellationToken ct, IConsole console, string traceFile, int n, bool inclusive, bool verbose);
-        private static async Task<int> TopNReport(CancellationToken ct, IConsole console, string traceFile, int number, bool inclusive, bool verbose) 
+        delegate Task<int> TopNReportDelegate(CancellationToken ct, IConsole console, string traceFile, int n, bool inclusive, bool verbose, string additonalSymPaths);
+        private static async Task<int> TopNReport(CancellationToken ct, IConsole console, string traceFile, int number, bool inclusive, bool verbose, string additonalSymPaths) 
         {          
             try 
             {
@@ -43,7 +43,14 @@ namespace Microsoft.Diagnostics.Tools.Trace
                 int count = 0;
                 int index = 0;
                 List<CallTreeNodeBase> nodesToReport = new List<CallTreeNodeBase>();
-                using (var symbolReader = new SymbolReader(System.IO.TextWriter.Null) { SymbolPath = SymbolPath.MicrosoftSymbolServerPath })
+                string symbolPaths = SymbolPath.MicrosoftSymbolServerPath;
+                if (!string.IsNullOrEmpty(additonalSymPaths))
+                {
+                    symbolPaths += ";";
+                    symbolPaths += additonalSymPaths;
+                }
+
+                using (var symbolReader = new SymbolReader(System.IO.TextWriter.Null) { SymbolPath = symbolPaths })
                 using (var eventLog = new TraceLog(tempEtlxFilename))
                 {
                     var stackSource = new MutableTraceEventStackSource(eventLog)
@@ -116,6 +123,7 @@ namespace Microsoft.Diagnostics.Tools.Trace
                             TopNOption(),
                             InclusiveOption(),
                             VerboseOption(),
+                            SymbolPathOption()
                         }
                 };
 
@@ -152,5 +160,13 @@ namespace Microsoft.Diagnostics.Tools.Trace
                 {
                     Argument = new Argument<bool>(name: "verbose", getDefaultValue: () => false)
                 };
+
+        private static Option SymbolPathOption() =>
+            new Option(
+                aliases: new[] { "--addtional-symbol-paths" },
+                description: $"A semicolon separated list of additonal paths to look for symbols in")
+            {
+                Argument = new Argument<string>(name: "additonalSymPaths", getDefaultValue: () => string.Empty)
+            };
     }
 }
