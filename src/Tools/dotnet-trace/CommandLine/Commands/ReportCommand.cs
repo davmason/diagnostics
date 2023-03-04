@@ -163,7 +163,7 @@ namespace Microsoft.Diagnostics.Tools.Trace
 
         private static Option SymbolPathOption() =>
             new Option(
-                aliases: new[] { "--addtional-symbol-paths" },
+                aliases: new[] { "--additional-symbol-paths" },
                 description: $"A semicolon separated list of additonal paths to look for symbols in")
             {
                 Argument = new Argument<string>(name: "additonalSymPaths", getDefaultValue: () => string.Empty)
