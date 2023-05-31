@@ -309,6 +309,13 @@ namespace Microsoft.Diagnostics.NETCore.Client
             ValidateResponseMessage(response, nameof(EnablePerfMap));
         }
 
+        internal async Task EnablePerfMapAsync(PerfMapType type, CancellationToken token)
+        {
+            IpcMessage request = CreateEnablePerfMapMessage(type);
+            IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, request, token).ConfigureAwait(false);
+            ValidateResponseMessage(response, nameof(EnablePerfMapAsync));
+        }
+
         /// <summary>
         ///
         /// </summary>
@@ -317,6 +324,13 @@ namespace Microsoft.Diagnostics.NETCore.Client
             IpcMessage request = CreateDisablePerfMapMessage();
             IpcMessage response = IpcClient.SendMessage(_endpoint, request);
             ValidateResponseMessage(response, nameof(DisablePerfMap));
+        }
+
+        internal async Task DisablePerfMapAsync(CancellationToken token)
+        {
+            IpcMessage request = CreateDisablePerfMapMessage();
+            IpcMessage response = await IpcClient.SendMessageAsync(_endpoint, request, token).ConfigureAwait(false);
+            ValidateResponseMessage(response, nameof(DisablePerfMapAsync));
         }
 
         /// <summary>
